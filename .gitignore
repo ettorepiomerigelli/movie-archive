@@ -1,0 +1,8 @@
+target/
+*.class
+.idea/
+*.iml
+out/
+data/movies.json
+.DS_Store
+data/movies.json
