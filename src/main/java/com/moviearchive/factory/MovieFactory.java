@@ -53,6 +53,10 @@ public final class MovieFactory {
         if (personalRating < 0 || personalRating > 5) {
             throw new IllegalArgumentException("La valutazione deve essere compresa tra 0 e 5.");
         }
+        if (status != ViewingStatus.WATCHED && personalRating != 0) {
+            throw new IllegalArgumentException(
+                    "La valutazione deve essere 0 se il film non è ancora stato visto.");
+        }
 
         Genre safeGenre = (genre != null) ? genre : Genre.UNCLASSIFIED;
         ViewingStatus safeStatus = (status != null) ? status : ViewingStatus.PLANNED;
