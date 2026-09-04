@@ -21,7 +21,8 @@ public class MovieFormDialog extends JDialog {
     private final JTextField directorField = new JTextField(20);
     private final JSpinner yearSpinner;
     private final JComboBox<Genre> genreCombo = new JComboBox<>(Genre.values());
-    private final JSpinner ratingSpinner = new JSpinner(new SpinnerNumberModel(0, 0, 5, 1));
+    private final JSpinner ratingSpinner = new JSpinner(
+            new SpinnerNumberModel(Integer.valueOf(0), null, null, Integer.valueOf(1)));
     private final JComboBox<ViewingStatus> statusCombo = new JComboBox<>(ViewingStatus.values());
 
     private Movie result;
@@ -32,7 +33,8 @@ public class MovieFormDialog extends JDialog {
         this.editingId = (existingMovie != null) ? existingMovie.getId() : null;
 
         int currentYear = Year.now().getValue();
-        yearSpinner = new JSpinner(new SpinnerNumberModel(currentYear, 1888, currentYear + 1, 1));
+        yearSpinner = new JSpinner(new SpinnerNumberModel(
+                Integer.valueOf(currentYear), null, null, Integer.valueOf(1)));
         yearSpinner.setEditor(new JSpinner.NumberEditor(yearSpinner, "#"));
 
         if (existingMovie != null) {
@@ -97,6 +99,16 @@ public class MovieFormDialog extends JDialog {
 
     private void onSave() {
         try {
+            yearSpinner.commitEdit();
+            ratingSpinner.commitEdit();
+        } catch (java.text.ParseException ex) {
+            JOptionPane.showMessageDialog(this,
+                    "Anno e valutazione devono essere numeri interi validi.",
+                    "Dati non validi", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        try {
             Genre genre = (Genre) genreCombo.getSelectedItem();
             ViewingStatus status = (ViewingStatus) statusCombo.getSelectedItem();
             int year = (Integer) yearSpinner.getValue();
@@ -104,9 +116,9 @@ public class MovieFormDialog extends JDialog {
 
             result = (editingId == null)
                     ? MovieFactory.createNewMovie(titleField.getText(), directorField.getText(),
-                            year, genre, rating, status)
+                    year, genre, rating, status)
                     : MovieFactory.recreateMovie(editingId, titleField.getText(), directorField.getText(),
-                            year, genre, rating, status);
+                    year, genre, rating, status);
 
             dispose();
         } catch (IllegalArgumentException ex) {
