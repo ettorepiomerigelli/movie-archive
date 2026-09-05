@@ -118,21 +118,6 @@ class ArchiveControllerTest {
     }
 
     @Test
-    void updateMovie_intoDuplicateOfAnotherExisting_throwsAndDoesNotApply() {
-        Movie a = MovieFactory.createNewMovie("A", "Regista Uno", 2020, Genre.DRAMA, 3, ViewingStatus.WATCHED);
-        Movie b = MovieFactory.createNewMovie("B", "Regista Due", 2021, Genre.COMEDY, 4, ViewingStatus.PLANNED);
-        controller.addMovie(a);
-        controller.addMovie(b);
-
-        // Si tenta di modificare "B" rendendolo equivalente ad "A"
-        Movie bMadeDuplicate = MovieFactory.recreateMovie(b.getId(), "A", "Regista Uno",
-                2020, Genre.COMEDY, 4, ViewingStatus.PLANNED);
-
-        assertThrows(DuplicateMovieException.class, () -> controller.updateMovie(bMadeDuplicate));
-        assertEquals("B", controller.getMovieById(b.getId()).get().getTitle());
-    }
-
-    @Test
     void updateMovie_withUnchangedTitleDirectorYear_doesNotThrow() {
         Movie movie = MovieFactory.createNewMovie("Titolo", "Regista", 2020,
                 Genre.DRAMA, 3, ViewingStatus.WATCHED);

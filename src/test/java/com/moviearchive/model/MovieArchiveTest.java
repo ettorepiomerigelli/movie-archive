@@ -97,7 +97,7 @@ class MovieArchiveTest {
         archive.add(original);
 
         Movie candidate = MovieFactory.createNewMovie("Dune", "Denis Villeneuve",
-                1984, Genre.SCI_FI, 3, ViewingStatus.PLANNED);
+                1984, Genre.SCI_FI, 3, ViewingStatus.WATCHED);
 
         assertFalse(archive.containsDuplicate(candidate));
     }
