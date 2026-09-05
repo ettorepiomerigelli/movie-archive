@@ -1,6 +1,7 @@
 package com.moviearchive.view;
 
 import com.moviearchive.controller.ArchiveController;
+import com.moviearchive.model.DuplicateMovieException;
 import com.moviearchive.model.Genre;
 import com.moviearchive.model.Movie;
 import com.moviearchive.model.ViewingStatus;
@@ -129,8 +130,8 @@ public class MainView extends JFrame {
 
     /**
      * Impedisce a un componente di espandersi oltre la propria altezza
-     * preferita quando è inserito in un BoxLayout verticale con spazio
-     * libero.
+     * preferita quando e' inserito in un BoxLayout verticale con spazio
+     * libero (vedi commento in buildSidePanel).
      */
     private void capHeight(JComponent component) {
         component.setMaximumSize(
@@ -182,7 +183,12 @@ public class MainView extends JFrame {
         dialog.setVisible(true);
         Movie created = dialog.getResult();
         if (created != null) {
-            controller.addMovie(created);
+            try {
+                controller.addMovie(created);
+            } catch (DuplicateMovieException ex) {
+                JOptionPane.showMessageDialog(this, ex.getMessage(),
+                        "Film gia' presente", JOptionPane.WARNING_MESSAGE);
+            }
         }
     }
 
@@ -195,7 +201,12 @@ public class MainView extends JFrame {
         dialog.setVisible(true);
         Movie edited = dialog.getResult();
         if (edited != null) {
-            controller.updateMovie(edited);
+            try {
+                controller.updateMovie(edited);
+            } catch (DuplicateMovieException ex) {
+                JOptionPane.showMessageDialog(this, ex.getMessage(),
+                        "Film gia' presente", JOptionPane.WARNING_MESSAGE);
+            }
         }
     }
 

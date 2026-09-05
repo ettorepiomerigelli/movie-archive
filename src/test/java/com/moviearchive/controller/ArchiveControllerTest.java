@@ -1,6 +1,7 @@
 package com.moviearchive.controller;
 
 import com.moviearchive.factory.MovieFactory;
+import com.moviearchive.model.DuplicateMovieException;
 import com.moviearchive.model.Genre;
 import com.moviearchive.model.Movie;
 import com.moviearchive.model.ViewingStatus;
@@ -17,8 +18,8 @@ import static org.junit.jupiter.api.Assertions.*;
 class ArchiveControllerTest {
 
     /**
-     * Repository "mock" in memoria: grazie alla Dependency Injection
-     * (il repository concreto è passato dall'esterno, non creato con
+     * Repository "fake" in memoria: grazie alla Dependency Injection
+     * (il repository concreto e' passato dall'esterno, non creato con
      * un Singleton), il Controller si puo' testare senza toccare il
      * file system.
      */
@@ -102,5 +103,47 @@ class ArchiveControllerTest {
         controller.removeMovie(movie.getId());
 
         assertEquals(0, controller.getTotalMovies());
+    }
+
+    @Test
+    void addMovie_duplicateOfExisting_throwsAndDoesNotAdd() {
+        controller.addMovie(MovieFactory.createNewMovie("Inception", "Christopher Nolan",
+                2010, Genre.SCI_FI, 5, ViewingStatus.WATCHED));
+
+        Movie duplicate = MovieFactory.createNewMovie("Inception", "Christopher Nolan",
+                2010, Genre.ACTION, 0, ViewingStatus.PLANNED);
+
+        assertThrows(DuplicateMovieException.class, () -> controller.addMovie(duplicate));
+        assertEquals(1, controller.getTotalMovies()); // il duplicato non deve essere stato aggiunto
+    }
+
+    @Test
+    void updateMovie_intoDuplicateOfAnotherExisting_throwsAndDoesNotApply() {
+        Movie a = MovieFactory.createNewMovie("A", "Regista Uno", 2020, Genre.DRAMA, 3, ViewingStatus.WATCHED);
+        Movie b = MovieFactory.createNewMovie("B", "Regista Due", 2021, Genre.COMEDY, 4, ViewingStatus.PLANNED);
+        controller.addMovie(a);
+        controller.addMovie(b);
+
+        // Si tenta di modificare "B" rendendolo equivalente ad "A"
+        Movie bMadeDuplicate = MovieFactory.recreateMovie(b.getId(), "A", "Regista Uno",
+                2020, Genre.COMEDY, 4, ViewingStatus.PLANNED);
+
+        assertThrows(DuplicateMovieException.class, () -> controller.updateMovie(bMadeDuplicate));
+        assertEquals("B", controller.getMovieById(b.getId()).get().getTitle());
+    }
+
+    @Test
+    void updateMovie_withUnchangedTitleDirectorYear_doesNotThrow() {
+        Movie movie = MovieFactory.createNewMovie("Titolo", "Regista", 2020,
+                Genre.DRAMA, 3, ViewingStatus.WATCHED);
+        controller.addMovie(movie);
+
+        // Si modifica solo la valutazione, titolo/regista/anno restano gli stessi:
+        // non deve essere considerato un duplicato di se stesso.
+        Movie edited = MovieFactory.recreateMovie(movie.getId(), "Titolo", "Regista",
+                2020, Genre.DRAMA, 5, ViewingStatus.WATCHED);
+
+        assertDoesNotThrow(() -> controller.updateMovie(edited));
+        assertEquals(5, controller.getMovieById(movie.getId()).get().getPersonalRating());
     }
 }

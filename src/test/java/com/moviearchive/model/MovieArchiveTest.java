@@ -77,4 +77,39 @@ class MovieArchiveTest {
         assertEquals(1, receivedEvents.size());
         assertEquals(ArchiveEvent.Type.RELOADED, receivedEvents.get(0).getType());
     }
+
+    @Test
+    void containsDuplicate_sameTitleDirectorYear_returnsTrue() {
+        Movie original = MovieFactory.createNewMovie("Inception", "Christopher Nolan",
+                2010, Genre.SCI_FI, 5, ViewingStatus.WATCHED);
+        archive.add(original);
+
+        Movie candidate = MovieFactory.createNewMovie("inception", "CHRISTOPHER NOLAN",
+                2010, Genre.ACTION, 0, ViewingStatus.PLANNED);
+
+        assertTrue(archive.containsDuplicate(candidate));
+    }
+
+    @Test
+    void containsDuplicate_differentYear_returnsFalse() {
+        Movie original = MovieFactory.createNewMovie("Dune", "Denis Villeneuve",
+                2021, Genre.SCI_FI, 4, ViewingStatus.WATCHED);
+        archive.add(original);
+
+        Movie candidate = MovieFactory.createNewMovie("Dune", "Denis Villeneuve",
+                1984, Genre.SCI_FI, 3, ViewingStatus.PLANNED);
+
+        assertFalse(archive.containsDuplicate(candidate));
+    }
+
+    @Test
+    void containsDuplicate_excludesMovieItself() {
+        Movie movie = MovieFactory.createNewMovie("Amelie", "Jean-Pierre Jeunet",
+                2001, Genre.ROMANCE, 4, ViewingStatus.WATCHED);
+        archive.add(movie);
+
+        // Lo stesso film (stesso id) non deve mai risultare "duplicato di se stesso",
+        // altrimenti sarebbe impossibile modificarlo senza cambiarne titolo/regista/anno.
+        assertFalse(archive.containsDuplicate(movie));
+    }
 }

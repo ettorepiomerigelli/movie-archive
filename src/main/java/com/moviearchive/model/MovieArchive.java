@@ -82,6 +82,23 @@ public class MovieArchive {
         return movies.stream().filter(m -> m.getId().equals(id)).findFirst();
     }
 
+    /**
+     * Verifica se esiste gia' nell'archivio un film "equivalente" a quello
+     * candidato, cioe' con stesso titolo, regista e anno di uscita
+     * (confronto case-insensitive sui testi). L'id del film candidato
+     * viene sempre escluso dal confronto: questo permette di riusare lo
+     * stesso controllo sia in fase di aggiunta (dove non esiste ancora
+     * nell'archivio) sia in fase di modifica (dove il film esiste gia'
+     * con quello stesso id, e non deve risultare "duplicato di se stesso").
+     */
+    public boolean containsDuplicate(Movie candidate) {
+        return movies.stream().anyMatch(existing ->
+                !existing.getId().equals(candidate.getId())
+                        && existing.getTitle().equalsIgnoreCase(candidate.getTitle())
+                        && existing.getDirector().equalsIgnoreCase(candidate.getDirector())
+                        && existing.getReleaseYear() == candidate.getReleaseYear());
+    }
+
     public int size() {
         return movies.size();
     }

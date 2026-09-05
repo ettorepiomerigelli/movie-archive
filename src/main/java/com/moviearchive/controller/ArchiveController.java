@@ -12,6 +12,7 @@ import com.moviearchive.filter.TextSearchFilter;
 import com.moviearchive.model.Genre;
 import com.moviearchive.model.Movie;
 import com.moviearchive.model.MovieArchive;
+import com.moviearchive.model.DuplicateMovieException;
 import com.moviearchive.model.ViewingStatus;
 import com.moviearchive.observer.ArchiveEvent;
 import com.moviearchive.observer.ArchiveObserver;
@@ -33,7 +34,7 @@ import java.util.Optional;
  *
  * La View non viene mai passata al costruttore per evitare la dipendenza
  * circolare Controller<->View: viene collegata in un secondo momento con
- * setViewRefreshCallback, chiamato da Main dopo che la View è stata creata.
+ * setViewRefreshCallback, chiamato da Main dopo che la View e' stata creata.
  */
 public class ArchiveController implements ArchiveObserver {
 
@@ -75,6 +76,11 @@ public class ArchiveController implements ArchiveObserver {
     // --- Operazioni CRUD (tramite Command, per abilitare undo/redo) ---
 
     public void addMovie(Movie movie) {
+        if (archive.containsDuplicate(movie)) {
+            throw new DuplicateMovieException(
+                    "Esiste gia' un film con lo stesso titolo, regista e anno: \""
+                            + movie.getTitle() + "\" (" + movie.getReleaseYear() + ").");
+        }
         commandManager.executeCommand(new AddMovieCommand(archive, movie));
     }
 
@@ -85,6 +91,11 @@ public class ArchiveController implements ArchiveObserver {
     }
 
     public void updateMovie(Movie updatedMovie) {
+        if (archive.containsDuplicate(updatedMovie)) {
+            throw new DuplicateMovieException(
+                    "Esiste gia' un altro film con lo stesso titolo, regista e anno: \""
+                            + updatedMovie.getTitle() + "\" (" + updatedMovie.getReleaseYear() + ").");
+        }
         Optional<Movie> previous = archive.findById(updatedMovie.getId());
         previous.ifPresent(oldState ->
                 commandManager.executeCommand(new UpdateMovieCommand(archive, oldState, updatedMovie)));
