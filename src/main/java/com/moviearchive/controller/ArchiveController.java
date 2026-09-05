@@ -49,6 +49,11 @@ public class ArchiveController implements ArchiveObserver {
 
     private Runnable viewRefreshCallback;
 
+    //Senza questa guardia, un file corrotto verrebbe
+    // sovrascritto con un archivio vuoto ancora prima che l'utente veda
+    // la finestra principale.
+    private boolean initializing = true;
+
     public ArchiveController(MovieRepository repository) {
         this.archive = new MovieArchive();
         this.repository = repository;
@@ -57,6 +62,7 @@ public class ArchiveController implements ArchiveObserver {
 
         archive.addObserver(this);
         archive.replaceAll(repository.loadAll());
+        initializing = false;
     }
 
     public void setViewRefreshCallback(Runnable callback) {
@@ -67,7 +73,9 @@ public class ArchiveController implements ArchiveObserver {
 
     @Override
     public void onArchiveChanged(ArchiveEvent event) {
-        repository.saveAll(archive.getAll());
+        if (!initializing) {
+            repository.saveAll(archive.getAll());
+        }
         if (viewRefreshCallback != null) {
             viewRefreshCallback.run();
         }

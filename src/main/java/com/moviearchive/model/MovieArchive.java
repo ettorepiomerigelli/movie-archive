@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * Archivio dei film dell'utente. Ricopre il ruolo di Subject nel pattern
@@ -16,6 +17,15 @@ import java.util.Optional;
  *
  * La classe non conosce ne' la View ne' la persistenza: si limita a
  * mantenere coerente lo stato in memoria e a notificarne i cambiamenti.
+ *
+ * Copie difensive: Movie e' un oggetto mutabile (ha dei setter), quindi
+ * senza precauzioni un chiamante esterno potrebbe ottenere un riferimento
+ * a un Movie tramite getAll()/findById() e modificarlo direttamente con
+ * un setter, bypassando completamente Command, Observer e persistenza.
+ * Per questo ogni film che ENTRA nell'archivio (add, update, replaceAll)
+ * viene copiato prima di essere memorizzato, ed ogni film che ESCE
+ * dall'archivio (getAll, findById) e' anch'esso una copia: l'unico Movie
+ * "vero" e' quello custodito nella lista interna, mai esposto all'esterno.
  */
 public class MovieArchive {
 
@@ -40,14 +50,15 @@ public class MovieArchive {
         if (movie == null || movies.contains(movie)) {
             return;
         }
-        movies.add(movie);
-        notify(new ArchiveEvent(ArchiveEvent.Type.ADDED, movie));
+        Movie stored = movie.copy();
+        movies.add(stored);
+        notify(new ArchiveEvent(ArchiveEvent.Type.ADDED, stored));
     }
 
     public void remove(String movieId) {
-        findById(movieId).ifPresent(movie -> {
+        findInternal(movieId).ifPresent(movie -> {
             movies.remove(movie);
-            notify(new ArchiveEvent(ArchiveEvent.Type.REMOVED, movie));
+            notify(new ArchiveEvent(ArchiveEvent.Type.REMOVED, movie.copy()));
         });
     }
 
@@ -57,8 +68,9 @@ public class MovieArchive {
         }
         int index = movies.indexOf(updatedMovie);
         if (index != -1) {
-            movies.set(index, updatedMovie);
-            notify(new ArchiveEvent(ArchiveEvent.Type.UPDATED, updatedMovie));
+            Movie stored = updatedMovie.copy();
+            movies.set(index, stored);
+            notify(new ArchiveEvent(ArchiveEvent.Type.UPDATED, stored));
         }
     }
 
@@ -70,15 +82,27 @@ public class MovieArchive {
      */
     public void replaceAll(List<Movie> newMovies) {
         movies.clear();
-        movies.addAll(newMovies);
+        for (Movie movie : newMovies) {
+            movies.add(movie.copy());
+        }
         notify(new ArchiveEvent(ArchiveEvent.Type.RELOADED, null));
     }
 
     public List<Movie> getAll() {
-        return Collections.unmodifiableList(movies);
+        return movies.stream().map(Movie::copy).collect(Collectors.toUnmodifiableList());
     }
 
     public Optional<Movie> findById(String id) {
+        return findInternal(id).map(Movie::copy);
+    }
+
+    /**
+     * Ricerca interna che restituisce il riferimento REALE (non una copia)
+     * usato dai metodi della classe stessa (remove, containsDuplicate) per
+     * operare sulla lista interna. Non e' esposto pubblicamente: solo
+     * findById() lo e', e restituisce sempre una copia (vedi sopra).
+     */
+    private Optional<Movie> findInternal(String id) {
         return movies.stream().filter(m -> m.getId().equals(id)).findFirst();
     }
 

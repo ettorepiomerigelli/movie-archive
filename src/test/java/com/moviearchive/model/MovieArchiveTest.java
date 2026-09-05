@@ -112,4 +112,94 @@ class MovieArchiveTest {
         // altrimenti sarebbe impossibile modificarlo senza cambiarne titolo/regista/anno.
         assertFalse(archive.containsDuplicate(movie));
     }
+
+    // --- Copie difensive in USCITA: mutare un Movie ottenuto da getAll()/
+    // findById() non deve mai toccare l'oggetto realmente custodito
+    // nell'archivio. Senza queste copie, un chiamante esterno potrebbe
+    // modificare l'archivio bypassando Command, Observer e persistenza. ---
+
+    @Test
+    void findById_returnsDefensiveCopy_mutatingItDoesNotAffectArchive() {
+        Movie movie = MovieFactory.createNewMovie("Titolo", "Regista", 2020,
+                Genre.DRAMA, 3, ViewingStatus.WATCHED);
+        archive.add(movie);
+
+        Movie reference = archive.findById(movie.getId()).get();
+        reference.setPersonalRating(999); // mutazione diretta sul riferimento ottenuto
+
+        assertEquals(3, archive.findById(movie.getId()).get().getPersonalRating(),
+                "l'archivio non deve risentire della mutazione di una copia esterna");
+    }
+
+    @Test
+    void getAll_returnsDefensiveCopies_mutatingThemDoesNotAffectArchive() {
+        Movie movie = MovieFactory.createNewMovie("Titolo", "Regista", 2020,
+                Genre.DRAMA, 3, ViewingStatus.WATCHED);
+        archive.add(movie);
+
+        archive.getAll().get(0).setPersonalRating(999);
+
+        assertEquals(3, archive.findById(movie.getId()).get().getPersonalRating(),
+                "l'archivio non deve risentire della mutazione di una copia esterna");
+    }
+
+    // --- Copie difensive in ENTRATA: mutare l'oggetto originale DOPO averlo
+    // passato ad add()/update()/replaceAll() non deve alterare cio' che
+    // l'archivio ha effettivamente memorizzato. ---
+
+    @Test
+    void add_copiesInput_mutatingOriginalAfterwardsDoesNotAffectArchive() {
+        Movie movie = MovieFactory.createNewMovie("Titolo", "Regista", 2020,
+                Genre.DRAMA, 3, ViewingStatus.WATCHED);
+
+        archive.add(movie);
+        movie.setPersonalRating(999); // mutazione dell'oggetto originale, dopo l'add
+
+        assertEquals(3, archive.findById(movie.getId()).get().getPersonalRating(),
+                "l'archivio deve aver memorizzato una copia indipendente al momento dell'add");
+    }
+
+    @Test
+    void update_copiesInput_mutatingOriginalAfterwardsDoesNotAffectArchive() {
+        Movie movie = MovieFactory.createNewMovie("Titolo", "Regista", 2020,
+                Genre.DRAMA, 3, ViewingStatus.WATCHED);
+        archive.add(movie);
+
+        Movie edited = MovieFactory.recreateMovie(movie.getId(), "Titolo", "Regista",
+                2020, Genre.DRAMA, 5, ViewingStatus.WATCHED);
+        archive.update(edited);
+        edited.setPersonalRating(999); // mutazione dell'oggetto passato, dopo l'update
+
+        assertEquals(5, archive.findById(movie.getId()).get().getPersonalRating(),
+                "l'archivio deve aver memorizzato una copia indipendente al momento dell'update");
+    }
+
+    @Test
+    void replaceAll_copiesInputElements_mutatingOriginalsAfterwardsDoesNotAffectArchive() {
+        Movie a = MovieFactory.createNewMovie("A", "Regista", 2020, Genre.DRAMA, 3, ViewingStatus.WATCHED);
+        List<Movie> toLoad = new ArrayList<>(List.of(a));
+
+        archive.replaceAll(toLoad);
+        a.setPersonalRating(999); // mutazione dell'originale, dopo il caricamento
+
+        assertEquals(3, archive.findById(a.getId()).get().getPersonalRating(),
+                "l'archivio deve aver copiato ogni film al momento del replaceAll");
+    }
+
+
+    @Test
+    void replaceAll_withManyMovies_stillEmitsExactlyOneEvent() {
+        List<Movie> many = new ArrayList<>();
+        for (int i = 0; i < 20; i++) {
+            many.add(MovieFactory.createNewMovie("Film " + i, "Regista", 2020,
+                    Genre.DRAMA, 0, ViewingStatus.PLANNED));
+        }
+
+        archive.replaceAll(many);
+
+        assertEquals(20, archive.size());
+        assertEquals(1, receivedEvents.size(),
+                "un solo evento RELOADED, indipendentemente dal numero di film caricati");
+        assertEquals(ArchiveEvent.Type.RELOADED, receivedEvents.get(0).getType());
+    }
 }
